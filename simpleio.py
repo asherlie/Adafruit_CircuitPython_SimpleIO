@@ -32,7 +32,95 @@ The `simpleio` module contains classes to provide simple access to IO.
 
 import digitalio
 import math
+import time
 from neopixel_write import neopixel_write
+
+
+def tone(pin, frequency, duration=0):
+    """
+    Generates a square wave of the specified frequency (50% duty cycle)
+    on a pin
+
+    :param pin: the pin on which to generate the tone
+    :param frequency: frequency of tone in Hz
+    :param duration: duration of tone in millis (optional)
+    """
+    for i in range(0, duration):
+        pwm = pulseio.PWMOut(pin, duty_cycle = 2 ** 15, frequency, variable_frequency = False)
+        time.sleep(0.001)
+
+
+def noTone(pin):
+    """
+    Stops the generation of the square wave produced by tone()
+    by deinit'ing the pin.
+
+    :param pin: pin on which to stop the tone from being played
+    """
+    pwm.deinit(pin)
+
+def shiftIn(dataPin, clock, bitOrder):
+    """
+    Shifts in a byte of data one bit at a time. Starts from either the LSB or
+    MSB.
+
+    :param dataPin: pin on which to input each bit
+    :param clock: toggles to signal dataPin reads
+    :param bitOrder: order to shift bits (either LSBFIRST or MSBFIRST)
+    :param value: RETURNS the value read
+    """
+
+    value = 0
+    i = 0
+
+    for i in range(0, 8):
+        clock.value = True
+        if bitOrder.upper() == 'LSBFIRST':
+            value |= ((dataPin.value) << i)
+        else:
+            value |= ((dataPin.value) << (7-i))
+        clock.value = False
+        i+=1
+    return value
+
+
+def shiftOut(dataPin, clock, bitOrder, value):
+    """
+    Shifts out a byte of data one bit at a time. Data gets written to a data
+    pin. Then, the clock pulses hi then low
+
+    :param dataPin: value bits get output on this pin
+    :param clock: toggled once the data pin is set
+    :param bitOrder: order to shift bits (either LSBFIRST or MSBFIRST)
+    :param value: byte to be shifted
+
+    Example for Metro Express:
+
+    .. code-block:: python
+
+        import digitalio
+        import simpleio
+        from board import *
+        clock = digitalio.DigitalInOut(D12)
+        dataPin = digitalio.DigitalInOut(D11)
+        clock.switch_to_output()
+        dataPin.switch_to_output()
+
+        while True:
+            valueSend = 500
+            shiftOut(dataPin, clock, 'LSBFIRST', (valueSend>>8))
+            shiftOut(dataPin, clock, 'LSBFIRST', valueSend)
+            shiftOut(dataPin, clock, 'MSBFIRST', (valueSend>>8))
+            shiftOut(dataPin, clock, 'MSBFIRST', valueSend)
+    """
+    value = value&0xFF
+    for i in range(0, 8):
+        if bitOrder.upper() == 'LSBFIRST':
+            tmpval = bool((value & (1 << i)))
+            dataPin.value = tmpval
+        else:
+            tmpval = bool(value & (1 << (7-i)))
+            dataPin.value = tmpval
 
 class DigitalOut:
     """
